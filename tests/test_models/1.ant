@@ -1,0 +1,4 @@
+compartment comp1
+var Km1
+
+a -> b; comp1*(Vm/Km1) * (a - b / Keq) / (1 + a / Km1 + b / Km2)

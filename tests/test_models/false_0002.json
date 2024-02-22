@@ -1,0 +1,1 @@
+[{"reaction_id":"_J0","kinetics":"k1","kinetics_sim":"k1","reactant_list":["a"],"product_list":["b"],"species_in_kinetic_law":[],"parameters_in_kinetic_law_only":["k1"],"const_parameters_in_kinetic_law":["k1"],"others_in_kinetic_law":[],"ids_list":["k1","a","b"],"sorted_species":["a","b"],"boundary_species":[],"compartment_in_kinetic_law":[],"is_reversible":true,"sbo_term":-1}]
