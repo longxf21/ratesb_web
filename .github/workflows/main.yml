@@ -1,0 +1,36 @@
+name: Python Tests
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9]
+
+    steps:
+    - uses: actions/checkout@v3 # Assuming 'v3' is the latest version
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3 # Assuming 'v3' is the latest version
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install .
+    - name: Install pytest
+      run: |
+        pip install pytest
+    - name: Add project root to PYTHONPATH
+      run: echo "PYTHONPATH=${{ github.workspace }}" >> $GITHUB_ENV
+    - name: Run tests
+      run: |
+        pytest tests/test_analyzer.py
+        pytest tests/test_classifier.py
+      working-directory: ./ # Adjust if necessary to point to the directory where pytest should run
