@@ -2,14 +2,16 @@ from dataclasses import dataclass
 import json
 import sys
 import os
-current_dir = os.path.dirname(__file__)
+current_dir = os.path.abspath(os.path.dirname(__file__))
+parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
 sys.path.append(current_dir)
+sys.path.append(parent_dir)
 
 from custom_classifier import _CustomClassifier
 # from SBMLKinetics.common.simple_sbml import SimpleSBML
 # from SBMLKinetics.common.reaction import Reaction
 from typing import List, Dict, Optional
-import util
+from common import util
 from results import Results
 
 import os

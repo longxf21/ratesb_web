@@ -11,8 +11,5 @@ classifiers = [
     "Operating System :: OS Independent"
 ]
 dependencies = [
-    "antimony",
-    "sbmlkinetics",
-    "sympy",
-    "python-libsbml"
+    "sympy"
 ]
