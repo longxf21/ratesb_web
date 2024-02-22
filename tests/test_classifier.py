@@ -1,19 +1,5 @@
 import unittest
-from unittest.mock import patch
-from unittest.mock import MagicMock
-from unittest.mock import Mock
-from unittest.mock import call
-from unittest.mock import ANY
 import os
-import math
-import random
-
-import sympy as sp
-import numpy as np
-import pandas as pd
-import libsbml
-import antimony as sb
-import json
 
 import sys
  
