@@ -2,23 +2,21 @@ from dataclasses import dataclass
 import json
 import sys
 import os
+
 current_dir = os.path.abspath(os.path.dirname(__file__))
 parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
 sys.path.append(current_dir)
 sys.path.append(parent_dir)
 
-from custom_classifier import _CustomClassifier
-# from SBMLKinetics.common.simple_sbml import SimpleSBML
-# from SBMLKinetics.common.reaction import Reaction
-from typing import List, Dict, Optional
+from typing import List, Optional
 from common import util
-from results import Results
+from reaction_data import AnalyzerData
 
 import os
 import re
 import sympy as sp
 
-from typing import List, Any
+from typing import List
 
 ZERO = "ZERO"
 UNDR1 = "UNDR1"
@@ -75,6 +73,31 @@ MM_CAT_SBOS = [28, 29, 30, 31, 199, 430, 270, 458, 275, 273, 379, 440, 443, 451,
 
 HILL_SBOS = [192, 195, 198]
 
+ALL_CHECKS = []
+ERROR_CHECKS = []
+WARNING_CHECKS = []
+for i in range(1, 3):
+    ALL_CHECKS.append(i)
+    ERROR_CHECKS.append(i)
+for i in range(1001, 1007):
+    ALL_CHECKS.append(i)
+    WARNING_CHECKS.append(i)
+for i in range(1010, 1011):
+    ALL_CHECKS.append(i)
+    WARNING_CHECKS.append(i)
+for i in range(1020, 1023):
+    ALL_CHECKS.append(i)
+    WARNING_CHECKS.append(i)
+for i in range(1030, 1038):
+    ALL_CHECKS.append(i)
+    WARNING_CHECKS.append(i)
+for i in range(1040, 1045):
+    ALL_CHECKS.append(i)
+    WARNING_CHECKS.append(i)
+    
+messages_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "messages.json")
+with open(messages_path) as file:
+    MESSAGES = json.load(file)
 
 @dataclass
 class ReactionData:
@@ -103,47 +126,79 @@ class Analyzer:
     for processing SBML models, and SBMLKinetics for analyzing SBML models and classifying 
     rate laws. The class can return errors and warnings based on the specified checks.
     """
+    
+    @staticmethod
+    def list_all_checks():
+        """
+        Returns a string representation of all the checks.
+        """
+        ret = ""
+        ret += "Error checks:\n"
+        for code in ERROR_CHECKS:
+            ret += str(code) + ": " + Analyzer.list_check(code) + "\n"
+        ret += "\nWarning checks:\n"
+        for code in WARNING_CHECKS:
+            ret += Analyzer.list_check(code) + "\n"
+        return ret
+    
+    @staticmethod
+    def list_check(code):
+        """
+        Returns a string representation of the check corresponding to the provided code.
 
-    def __init__(self, model_json: str, rate_law_classification_json: Optional[str] = None):
+        Args:
+            code (int): The code of the check.
+        """
+        ret = str(code) + ": "
+        if code not in ALL_CHECKS:
+            return None
+        if code < 1000:
+            ret += MESSAGES["errors"][str(code)]
+        else:
+            ret += MESSAGES["warnings"][str(code)]
+        return ret
+        
+
+    def __init__(self, model_str: str, rate_law_classifications_path: str=None):
         """
         Initializes the Analyzer class.
 
         Args:
-            model_str (str): json representation of the model.
-            rate_law_classification_json (str): json representation of the custon classifications.
-        """
-        # splitted_path = os.path.splitext(model_str)
-        # ext = splitted_path[1]
-        # xml = ''
-        # if ext == '.ant' or ext == '.txt':
-        #     ant = util.get_model_str(model_str, False)
-        #     load_int = antimony.loadAntimonyString(ant)
-        #     if load_int > 0:
-        #         xml = antimony.getSBMLString()
-        #     else:
-        #         raise ValueError("Invalid Antimony model.")
-        # elif ext == '.xml':
-        #     xml = util.get_model_str(model_str, True)
-        # else:
-        #     raise ValueError(
-        #         "Invalid file format, accepting .xml, .ant, and .txt")
-        # reader = libsbml.SBMLReader()
-        # document = reader.readSBMLFromString(xml)
-        # util.checkSBMLDocument(document)
-        self.reactions = json.loads(model_json)
-        # self.model = document.getModel()
-        # self.simple = SimpleSBML(self.model)
-        self.custom_classifier = None
-        self.default_classifications = {}
-        self.custom_classifications = {}
-        self.results = Results()
-        self.default_classifier = _CustomClassifier(os.path.join(
-            os.path.dirname(__file__), "default_classifier.json"))
+            model_str (str): Path to the model file, or the string representation of model.
+            rate_law_classifications_path (str): Path to the rate law classification file.
+            customized rate law classification.
 
-        if rate_law_classification_json:
-            self.custom_classifier = _CustomClassifier(rate_law_classification_json)
-            if len(self.custom_classifier.warning_message) > 0:
-                print(self.custom_classifier.warning_message)
+        Examples:
+            import Analyzer from ratesb_web.common.analyzer
+            analyzer = Analyzer("path/to/biomodel.xml", "path/to/rate_laws.json")
+            analyzer.check_all()
+            results = analyzer.results
+            print(str(results))
+            str(results)
+        """
+        self.data = AnalyzerData(model_str, rate_law_classifications_path)
+        self.results = self.data.results
+
+    def check_except(self, excluded_codes: Optional[List[int]]=[]):
+        """
+        Performs all checks except the ones corresponding to the provided list of error or warning codes.
+
+        Args:
+            excluded_codes (Optional[List[int]]): List of codes of the checks to exclude. If None, all checks are performed.
+
+        Updates:
+            The results of the check(s) to self.results.
+        """
+        self.checks(list(set(ALL_CHECKS) - set(excluded_codes)))
+
+    def check_all(self):
+        """
+        Performs all checks.
+
+        Updates:
+            The results of the check_all to self.results.
+        """
+        self.check_except([])
 
     def checks(self, codes):
         """
@@ -157,48 +212,12 @@ class Analyzer:
             The results of the checks to self.results.
         """
             
-        self.default_classifications = {}
-        self.custom_classifications = {}
-        self.results.clear_results()
+        self.data.default_classifications = {}
+        self.data.custom_classifications = {}
+        self.data.results.clear_results()
 
-        for reaction in self.reactions:
-            reaction_id = reaction['reaction_id']
-            kinetics = reaction['kinetics']
-            kinetics_sim = reaction['kinetics_sim']
-            reactant_list = reaction['reactant_list']
-            product_list = reaction['product_list']
-            species_in_kinetic_law = reaction['species_in_kinetic_law']
-            parameters_in_kinetic_law_only = reaction['parameters_in_kinetic_law_only']
-            others_in_kinetic_law = reaction['others_in_kinetic_law']
-            ids_list = reaction['ids_list']
-            sorted_species = reaction['sorted_species']
-            boundary_species = reaction['boundary_species']
-            compartment_in_kinetic_law = reaction['compartment_in_kinetic_law']
-            is_reversible = reaction['is_reversible']
-            sbo_term = reaction['sbo_term']
-            const_parameters_in_kinetic_law = reaction['const_parameters_in_kinetic_law']
-            non_constant_params = [param for param in parameters_in_kinetic_law_only if param not in const_parameters_in_kinetic_law]
-                
-
-            data = ReactionData(
-                reaction_id=reaction_id,
-                kinetics=kinetics,
-                kinetics_sim=kinetics_sim,
-                reactant_list=reactant_list,
-                product_list=product_list,
-                species_in_kinetic_law=species_in_kinetic_law,
-                parameters_in_kinetic_law=parameters_in_kinetic_law_only + others_in_kinetic_law,
-                ids_list=ids_list,
-                sorted_species=sorted_species,
-                boundary_species=boundary_species,
-                parameters_in_kinetic_law_only=parameters_in_kinetic_law_only,
-                compartment_in_kinetic_law=compartment_in_kinetic_law,
-                is_reversible=is_reversible,
-                sbo_term=sbo_term,
-                codes=codes,
-                non_constant_params=non_constant_params
-            )
-
+        for data in self.data.reactions:
+            data.__dict__["codes"] = codes
             self._set_kinetics_type(**data.__dict__)
             if 1 in codes:
                 self._check_empty_kinetics(**data.__dict__)
@@ -224,16 +243,13 @@ class Analyzer:
                 self._check_formatting_conventions(**data.__dict__)
             if any(isinstance(num, int) and 1040 <= num <= 1044 for num in codes):
                 self._check_sboterm_annotations(**data.__dict__)
-
-            # self._check_empty_kinetics(**kwargs)
-            # self._check_boundary_floating_species(**kwargs)
-
+    
     def _set_kinetics_type(self, **kwargs):
         reaction_id = kwargs["reaction_id"]
-        self.default_classifications[reaction_id] = self.default_classifier.custom_classify(
+        self.data.default_classifications[reaction_id] = self.data.default_classifier.custom_classify(
             is_default=True, **kwargs)
-        if self.custom_classifier:
-            self.custom_classifications[reaction_id] = self.custom_classifier.custom_classify(
+        if self.data.custom_classifier:
+            self.data.custom_classifications[reaction_id] = self.data.custom_classifier.custom_classify(
                 **kwargs)
 
     def _check_empty_kinetics(self, **kwargs):
@@ -251,7 +267,7 @@ class Analyzer:
         reaction_id = kwargs["reaction_id"]
         kinetics = kwargs["kinetics"]
         if len(kinetics.replace(' ', '')) == 0:
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1, f"No rate law entered.", False)
 
     def _check_floating_species(self, **kwargs):
@@ -280,7 +296,7 @@ class Analyzer:
                     floating_species.append(reactant)
         if len(floating_species) > 0:
             floating_species = ",".join(floating_species)
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 2, f"Expecting reactants in rate law: {floating_species}", False)
 
     def _check_pure_number(self, **kwargs):
@@ -299,7 +315,7 @@ class Analyzer:
         kinetics_sim = kwargs["kinetics_sim"]
         try:
             float(kinetics_sim)
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1001, "Rate law contains only number.")
         except:
             return
@@ -316,13 +332,13 @@ class Analyzer:
             A warning message to results specifying that the rate law is unrecognized.
         """
         reaction_id = kwargs["reaction_id"]
-        if len(self.custom_classifications) > 0:
-            if not (any(self.default_classifications[reaction_id].values()) or any(self.custom_classifications[reaction_id].values())):
-                self.results.add_message(
+        if len(self.data.custom_classifications) > 0:
+            if not (any(self.data.default_classifications[reaction_id].values()) or any(self.data.custom_classifications[reaction_id].values())):
+                self.data.results.add_message(
                     reaction_id, 1002, "Unrecognized rate law from the standard list and the custom list.")
         else:
-            if not any(self.default_classifications[reaction_id].values()):
-                self.results.add_message(
+            if not any(self.data.default_classifications[reaction_id].values()):
+                self.data.results.add_message(
                     reaction_id, 1002, "Unrecognized rate law from the standard list.")
 
     def _check_flux_increasing_with_reactant(self, **kwargs):
@@ -343,7 +359,7 @@ class Analyzer:
         kinetics = kwargs["kinetics"]
 
         if not util.check_symbols_derivative(sp.sympify(kinetics), reactant_list):
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1003, "Flux is not increasing as reactant increases.")
 
     def _check_flux_decreasing_with_product(self, **kwargs):
@@ -367,7 +383,7 @@ class Analyzer:
 
         if is_reversible:
             if not util.check_symbols_derivative(sp.sympify(kinetics), product_list, False):
-                self.results.add_message(
+                self.data.results.add_message(
                     reaction_id, 1004, "Flux is not decreasing as product increases.")
 
     def _check_boundary_floating_species(self, **kwargs):
@@ -396,13 +412,14 @@ class Analyzer:
                     boundary_floating_species.append(reactant)
         if len(boundary_floating_species) > 0:
             boundary_floating_species = ",".join(boundary_floating_species)
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1005, f"Expecting boundary species reactant in rate law: {boundary_floating_species}")
 
     def _check_constant_parameters(self, **kwargs):
         """
         Checks if the parameters in the rate law are constants.
         Code: 1006
+        TODO remove libsbml dependency
 
         Args:
             reaction_id (str): The reaction's id'.
@@ -420,7 +437,7 @@ class Analyzer:
                 non_constant_params_in_kinetic_law.append(param)
         if len(non_constant_params_in_kinetic_law) > 0:
             non_constant_params_in_kinetic_law = ",".join(non_constant_params_in_kinetic_law)
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1006, f"Expecting these parameters to be constants: {non_constant_params_in_kinetic_law}")
 
     def _check_irreversibility(self, **kwargs):
@@ -449,7 +466,7 @@ class Analyzer:
                     inconsistent_products.append(product)
         if len(inconsistent_products) > 0:
             inconsistent_products = ",".join(inconsistent_products)
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1010, f"Irreversible reaction kinetic law contains products: {inconsistent_products}")
 
     def _check_naming_conventions(self, **kwargs):
@@ -470,10 +487,10 @@ class Analyzer:
         codes = kwargs["codes"]
 
         naming_convention_warnings = {'k': [], 'K': [], 'V': []}
-        if any(self.default_classifications[reaction_id][key] for key in NON_MM_KEYS):
+        if any(self.data.default_classifications[reaction_id][key] for key in NON_MM_KEYS):
             naming_convention_warnings['k'] = self._check_symbols_start_with(
                 'k', parameters_in_kinetic_law)
-        elif self.default_classifications[reaction_id]['MM']:
+        elif self.data.default_classifications[reaction_id]['MM']:
             eq = self._numerator_denominator(kinetics_sim, ids_list)
             eq0 = [param for param in parameters_in_kinetic_law if param in eq[0]]
             eq1 = [param for param in parameters_in_kinetic_law if param in eq[1]]
@@ -481,13 +498,13 @@ class Analyzer:
                 'V', eq0)
             naming_convention_warnings['K'] = self._check_symbols_start_with(
                 'K', eq1)
-        elif self.default_classifications[reaction_id]['MMcat']:
+        elif self.data.default_classifications[reaction_id]['MMcat']:
             eq = self._numerator_denominator(kinetics_sim, ids_list)
             eq0 = [param for param in parameters_in_kinetic_law if param in eq[0]]
             eq1 = [param for param in parameters_in_kinetic_law if param in eq[1]]
             naming_convention_warnings['K'] = self._check_symbols_start_with('K', eq0)
             naming_convention_warnings['K'] = self._check_symbols_start_with('K', eq1)
-        elif self.default_classifications[reaction_id]['Hill']:
+        elif self.data.default_classifications[reaction_id]['Hill']:
             eq = self._numerator_denominator(kinetics_sim, ids_list)
             eq0 = [param for param in parameters_in_kinetic_law if param in eq[0]]
             eq1 = [param for param in parameters_in_kinetic_law if param in eq[1]]
@@ -497,17 +514,17 @@ class Analyzer:
         if 1020 in codes and len(naming_convention_warnings['k']) > 0:
             naming_convention_warnings_k = ",".join(
                 naming_convention_warnings['k'])
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1020, f"We recommend that these parameters start with 'k': {naming_convention_warnings_k}")
         if 1021 in codes and len(naming_convention_warnings['K']) > 0:
             naming_convention_warnings_K = ",".join(
                 naming_convention_warnings['K'])
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1021, f"We recommend that these parameters start with 'K': {naming_convention_warnings_K}")
         if 1022 in codes and len(naming_convention_warnings['V']) > 0:
             naming_convention_warnings_V = ",".join(
                 naming_convention_warnings['V'])
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1022, f"We recommend that these parameters start with 'V': {naming_convention_warnings_V}")
 
     def _check_symbols_start_with(self, start, symbols):
@@ -630,8 +647,8 @@ class Analyzer:
         sorted_species = kwargs["sorted_species"]
 
         flag = 0
-        assert len(self.default_classifications[reaction_id]) > 0
-        if any(self.default_classifications[reaction_id][key] for key in MM_KEYS):
+        assert len(self.data.default_classifications[reaction_id]) > 0
+        if any(self.data.default_classifications[reaction_id][key] for key in MM_KEYS):
             eq = self._numerator_denominator_order_remained(
                 kinetics, ids_list)  # _numerator_denominator not provided
             flag = self._check_expression_format(
@@ -642,30 +659,30 @@ class Analyzer:
             flag = self._check_expression_format(
                 kinetics, compartment_in_kinetic_law, parameters_in_kinetic_law_only, sorted_species)
         if flag == 1 and 1030 in codes:
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1030, f"Elements of the same type are not ordered alphabetically")
         if flag == 2 and 1031 in codes:
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1031, f"Formatting convention not followed (compartment before parameters before species)")
         # TODO: currently the default classification does not classify these as MM, so these checks are not performed
         if flag == 3 and 1032 in codes:
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1032, f"Denominator not in alphabetical order")
         if flag == 4 and 1033 in codes:
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1033, f"Numerator and denominator not in alphabetical order")
         if flag == 5 and 1034 in codes:
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1034, f"Numerator convention not followed and denominator not in alphabetical order")
-        if flag == 6 and 1035 in codes:
-            self.results.add_message(
-                reaction_id, 1035, f"Denominator convention not followed")
-        if flag == 7 and 1036 in codes:
-            self.results.add_message(
-                reaction_id, 1036, f"Numerator not in alphabetical order and denominator convention not followed")
-        if flag == 8 and 1037 in codes:
-            self.results.add_message(
-                reaction_id, 1037, f"Numerator and denominator convention not followed")
+        # if flag == 6 and 1035 in codes:
+        #     self.data.results.add_message(
+        #         reaction_id, 1035, f"Denominator convention not followed")
+        # if flag == 7 and 1036 in codes:
+        #     self.data.results.add_message(
+        #         reaction_id, 1036, f"Numerator not in alphabetical order and denominator convention not followed")
+        # if flag == 8 and 1037 in codes:
+        #     self.data.results.add_message(
+        #         reaction_id, 1037, f"Numerator and denominator convention not followed")
 
     def _check_sboterm_annotations(self, **kwargs):
         """
@@ -682,40 +699,40 @@ class Analyzer:
         reaction_id = kwargs["reaction_id"]
         sbo_term = kwargs["sbo_term"]
         codes = kwargs["codes"]
-        assert len(self.default_classifications) > 0
+        assert len(self.data.default_classifications) > 0
         flag = 0
         if sbo_term < 0:
             flag = 0
-        elif any(self.default_classifications[reaction_id][key] for key in UNDR_KEYS):
+        elif any(self.data.default_classifications[reaction_id][key] for key in UNDR_KEYS):
             if sbo_term not in UNDR_SBOS:
                 flag = 1
-        elif any(self.default_classifications[reaction_id][key] for key in UNDR_A_KEYS):
+        elif any(self.data.default_classifications[reaction_id][key] for key in UNDR_A_KEYS):
             if sbo_term not in UNDR_A_SBOS:
                 flag = 2
-        elif any(self.default_classifications[reaction_id][key] for key in BIDR_ALL_KEYS):
+        elif any(self.data.default_classifications[reaction_id][key] for key in BIDR_ALL_KEYS):
             if sbo_term not in BI_SBOS:
                 flag = 3
-        elif self.default_classifications[reaction_id]['MM']:
+        elif self.data.default_classifications[reaction_id]['MM']:
             if sbo_term not in MM_SBOS:
                 flag = 4
-        elif any(self.default_classifications[reaction_id][key] for key in MM_CAT_KEYS):
+        elif any(self.data.default_classifications[reaction_id][key] for key in MM_CAT_KEYS):
             if sbo_term not in MM_CAT_SBOS:
                 flag = 5
-        elif self.default_classifications[reaction_id]['Hill']:
-            if sbo_term not in HILL_SBOS:
-                flag = 6
+        # elif self.data.default_classifications[reaction_id]['Hill']:
+        #     if sbo_term not in HILL_SBOS:
+        #         flag = 6
         if flag == 1 and 1040 in codes:
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1040, f"Uni-directional mass action annotation not following recommended SBO terms, we recommend annotations to be subclasses of: SBO_0000430, SBO_0000041")
         elif flag == 2 and 1041 in codes:
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1041, f"Uni-Directional Mass Action with an Activator annotation not following recommended SBO terms, we recommend annotations to be subclasses of: SBO_0000041")
         elif flag == 3 and 1042 in codes:
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1042, f"Bi-directional mass action (with an Activator) annotation not following recommended SBO terms, we recommend annotations to be subclasses of: SBO_0000042")
         elif flag == 4 and 1043 in codes:
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1043, f"Michaelis-Menten kinetics without an explicit enzyme annotation not following recommended SBO terms, we recommend annotations to be subclasses of: SBO_0000028")
         elif flag == 5 and 1044 in codes:
-            self.results.add_message(
+            self.data.results.add_message(
                 reaction_id, 1044, f"Michaelis-Menten kinetics with an explicit enzyme annotation not following recommended SBO terms, we recommend annotations to be subclasses of: SBO_0000028, SBO_0000430")

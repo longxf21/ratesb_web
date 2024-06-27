@@ -4,7 +4,7 @@ import os
 # setting path
 current_dir = os.path.dirname(__file__)
 parent_dir = os.path.dirname(current_dir)
-common_dir = os.path.join(parent_dir, 'ratesb_python', 'common')
+common_dir = os.path.join(parent_dir, 'ratesb_web', 'common')
 sys.path.append(common_dir)
 
 from analyzer import Analyzer

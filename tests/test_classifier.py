@@ -6,15 +6,15 @@ import sys
 # setting path
 current_dir = os.path.dirname(__file__)
 parent_dir = os.path.dirname(current_dir)
-common_dir = os.path.join(parent_dir, 'ratesb_python', 'common')
+common_dir = os.path.join(parent_dir, 'ratesb_web', 'common')
 sys.path.append(common_dir)
 
-# from ratesb_python.common.custom_classifier import _CustomClassifier
+# from ratesb_web.common.custom_classifier import _CustomClassifier
 from analyzer import Analyzer
 
 DIR = os.path.dirname(os.path.realpath(__file__))
 UPPER_DIR = os.path.dirname(DIR)
-DEFAULT_CLASSIFIER_PATH = os.path.join(UPPER_DIR, "ratesb_python", "common", "default_classifier.json")
+DEFAULT_CLASSIFIER_PATH = os.path.join(UPPER_DIR, "ratesb_web", "common", "default_classifier.json")
 
 TEST_CLASSIFIER_MODELS = "test_classifier_models"
 ZERO_PATH = os.path.join(DIR, TEST_CLASSIFIER_MODELS, "zero.ant")
@@ -50,7 +50,7 @@ class TestClassifier(unittest.TestCase):
             content = file.read()
         analyzer = Analyzer(content)
         analyzer.checks([])
-        for key, val in analyzer.default_classifications.items():
+        for key, val in analyzer.data.default_classifications.items():
             for k, v in val.items():
                 self.assertFalse(v)
 
@@ -59,7 +59,7 @@ class TestClassifier(unittest.TestCase):
             content = file.read()
         analyzer = Analyzer(content)
         analyzer.checks([])
-        for key, val in analyzer.default_classifications.items():
+        for key, val in analyzer.data.default_classifications.items():
             self.assertTrue(val[ZERO])
             # assert all other values are false
             for k, v in val.items():
@@ -71,7 +71,7 @@ class TestClassifier(unittest.TestCase):
             content = file.read()
         analyzer = Analyzer(content)
         analyzer.checks([])
-        for key, val in analyzer.default_classifications.items():
+        for key, val in analyzer.data.default_classifications.items():
             self.assertTrue(val[UNDR1] or val[UNDR2] or val[UNDR3])
             for k, v in val.items():
                 if k != UNDR1 and k != UNDR2 and k != UNDR3:
@@ -82,7 +82,7 @@ class TestClassifier(unittest.TestCase):
             content = file.read()
         analyzer = Analyzer(content)
         analyzer.checks([])
-        for key, val in analyzer.default_classifications.items():
+        for key, val in analyzer.data.default_classifications.items():
             self.assertTrue(val[UNDR_A1] or val[UNDR_A2] or val[UNDR_A3])
             for k, v in val.items():
                 if k != UNDR_A1 and k != UNDR_A2 and k != UNDR_A3:
@@ -93,7 +93,7 @@ class TestClassifier(unittest.TestCase):
             content = file.read()
         analyzer = Analyzer(content)
         analyzer.checks([])
-        for key, val in analyzer.default_classifications.items():
+        for key, val in analyzer.data.default_classifications.items():
             self.assertTrue(val[BIDR11] or val[BIDR12] or val[BIDR21] or val[BIDR22])
             for k, v in val.items():
                 if k != BIDR11 and k != BIDR12 and k != BIDR21 and k != BIDR22:
@@ -104,7 +104,7 @@ class TestClassifier(unittest.TestCase):
             content = file.read()
         analyzer = Analyzer(content)
         analyzer.checks([])
-        for key, val in analyzer.default_classifications.items():
+        for key, val in analyzer.data.default_classifications.items():
             self.assertTrue(val[BIDR_A11] or val[BIDR_A12] or val[BIDR_A21] or val[BIDR_A22])
             for k, v in val.items():
                 if k != BIDR_A11 and k != BIDR_A12 and k != BIDR_A21 and k != BIDR_A22:
@@ -115,7 +115,7 @@ class TestClassifier(unittest.TestCase):
             content = file.read()
         analyzer = Analyzer(content)
         analyzer.checks([])
-        for key, val in analyzer.default_classifications.items():
+        for key, val in analyzer.data.default_classifications.items():
             self.assertTrue(val[MM])
             for k, v in val.items():
                 if k != MM:
@@ -126,7 +126,7 @@ class TestClassifier(unittest.TestCase):
             content = file.read()
         analyzer = Analyzer(content)
         analyzer.checks([])
-        for key, val in analyzer.default_classifications.items():
+        for key, val in analyzer.data.default_classifications.items():
             self.assertTrue(val[MM_CAT])
             for k, v in val.items():
                 if k != MM_CAT:
@@ -137,7 +137,7 @@ class TestClassifier(unittest.TestCase):
             content = file.read()
         analyzer = Analyzer(content)
         analyzer.checks([])
-        for key, val in analyzer.default_classifications.items():
+        for key, val in analyzer.data.default_classifications.items():
             self.assertTrue(val[AMM])
             for k, v in val.items():
                 if k != AMM:
@@ -148,7 +148,7 @@ class TestClassifier(unittest.TestCase):
             content = file.read()
         analyzer = Analyzer(content)
         analyzer.checks([])
-        for key, val in analyzer.default_classifications.items():
+        for key, val in analyzer.data.default_classifications.items():
             self.assertTrue(val[IMM])
             for k, v in val.items():
                 if k != IMM:
@@ -159,7 +159,7 @@ class TestClassifier(unittest.TestCase):
             content = file.read()
         analyzer = Analyzer(content)
         analyzer.checks([])
-        for key, val in analyzer.default_classifications.items():
+        for key, val in analyzer.data.default_classifications.items():
             self.assertTrue(val[RMM])
             for k, v in val.items():
                 if k != RMM:
@@ -170,7 +170,7 @@ class TestClassifier(unittest.TestCase):
             content = file.read()
         analyzer = Analyzer(content)
         analyzer.checks([])
-        for key, val in analyzer.default_classifications.items():
+        for key, val in analyzer.data.default_classifications.items():
             self.assertTrue(val[RMM_CAT])
             for k, v in val.items():
                 if k != RMM_CAT:
@@ -181,7 +181,7 @@ class TestClassifier(unittest.TestCase):
             content = file.read()
         analyzer = Analyzer(content)
         analyzer.checks([])
-        for key, val in analyzer.default_classifications.items():
+        for key, val in analyzer.data.default_classifications.items():
             self.assertTrue(val[HILL])
             for k, v in val.items():
                 if k != HILL:

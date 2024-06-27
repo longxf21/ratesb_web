@@ -1,10 +1,10 @@
 # ratesb_web: Rate Law Analysis for SBML and Antimony Models
 
-`ratesb_web` is the python backend support for ratesb. To use ratesb in python, please install [ratesb_python](https://github.com/sys-bio/ratesb_python).
+`ratesb_web` is the python backend support for ratesb. Basically it removes all the packages using c++ so that `ratesb_web` can be embedded in ratesb website. To use ratesb in python, please install [ratesb_python](https://github.com/sys-bio/ratesb_python).
 
 ## Installation
 
-To install `ratesb_web`, execute the following command in your terminal:
+`ratesb_web` is not designed for python useage, but if you would like a pure python package, to install `ratesb_web`, execute the following command in your terminal:
 
 ```bash
 pip install ratesb_web
@@ -16,7 +16,9 @@ pip install ratesb_web
 
 ## Development
 
-Once a new version of `ratesb_python` is released, copy and paste all codes, then delete the get parameter methods for analyzer, instead read from the input json string that represents all reactions of the model. The custom classifier path is replaced by a json string of the custom classifier.
+Once a new version of `ratesb_python` is released, copy and paste all codes except for reaction_data.py (preprocessing the model data is different). Adjust testing accordingly. 
+
+Ideally we would like the same testing files for the two packages, but to achieve that we need python-libsbml and antimony, which are c++ based packages that cannot be used here. Working on a solution...
 
 ## License
 
@@ -25,5 +27,3 @@ Once a new version of `ratesb_python` is released, copy and paste all codes, the
 ## Contact
 
 For additional queries, please contact Longxuan Fan at longxuan@usc.edu.
-
-We hope ratesb_python assists you effectively in your model rate law analysis!
